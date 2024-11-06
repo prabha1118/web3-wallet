@@ -1,4 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { generateMnemonic, mnemonicToSeedSync } from 'bip39';
+import { mnemonicToSeed } from 'bip39';
+import { derivePath} from "ed25519-hd-key"
+import { Keypair } from "@solana/web3.js";
+import nacl from "tweetnacl";
+import bs58 from 'bs58';
+import { Buffer } from 'buffer';
+
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card.tsx';
 import { Button } from './ui/button.tsx';
 import { Copy, ExternalLink, Send, ArrowDownUp, Plus, Eye, ChevronDown, Import } from 'lucide-react';
@@ -18,11 +26,15 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.tsx"
 
+window.Buffer = Buffer; 
+
 const Web3Wallet = () => {
   
   const [isConnected, setIsConnected] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const [mnemonic, setMnemonic] = useState("champion capital butter volume protect cave mail behind because divert have chronic")
   const [showMnemonic, setShowMnemonic] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAccount, setCurrentAccount] = useState(0);
   const [importedWords, setImportedWords] = useState(Array(12).fill(''));
   const [walletStep, setWalletStep] = useState('initial');
@@ -31,10 +43,17 @@ const Web3Wallet = () => {
     { address: '0x5678...9012', balance: '0.567 ETH', name: 'Account 2', privateKey: '0xijkl...mnop' },
   ]);
 
-  const mnemonicPhrase = [
-    'wheel', 'rigid', 'panic', 'kingdom', 'ecology', 'stand',
-    'virus', 'casino', 'reform', 'guess', 'paddle', 'drift'
-  ];
+  useEffect(() => {
+    createMnemonic()
+  }, [])
+
+  const createMnemonic = async () => {
+    const mn = await generateMnemonic()
+
+    setMnemonic(mn)
+  }
+
+  
 
   const handleCopyAddress = () => {
     setShowCopied(true);
@@ -42,12 +61,24 @@ const Web3Wallet = () => {
   };
 
   const handleCreateAccount = () => {
+
+    const seed = mnemonicToSeedSync(mnemonic)
+    const path = `m/44'/501'/${currentIndex}'/0'`
+    const derivedSeed = derivePath(path, seed.toString("hex")).key
+    const secret = nacl.sign.keyPair.fromSeed(derivedSeed).secretKey
+    const keypair = Keypair.fromSecretKey(secret)._keypair
+    setCurrentIndex(currentIndex + 1)
+
+    console.log(keypair.publicKey)
+    console.log(keypair.secretKey)
+
     const newAccount = {
-      address: `0x${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`,
+      address: bs58.encode(keypair.publicKey),
       balance: '0.000 ETH',
       name: `Account ${accounts.length + 1}`,
-      privateKey: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 10)}`
+      privateKey: bs58.encode(keypair.secretKey),
     };
+
     setAccounts([...accounts, newAccount]);
     setCurrentAccount(accounts.length);
     setWalletStep('connected');
@@ -141,8 +172,11 @@ const Web3Wallet = () => {
     </Card>
   );
 
-  const InitialView = () => (
-    <Card className="text-center p-6 shadow-xl bg-white rounded-xl">
+  const InitialView = () => {
+    const mnemonicArray = mnemonic.split(" ")
+
+    return(
+      <Card className="text-center p-6 shadow-xl bg-white rounded-xl">
       <CardHeader>
         <CardTitle>Web3 Wallet</CardTitle>
       </CardHeader>
@@ -168,7 +202,7 @@ const Web3Wallet = () => {
               <Card className="bg-gray-50 shadow-inner">
                 <CardContent className="pt-6">
                   <div className="grid grid-cols-3 gap-3">
-                    {mnemonicPhrase.map((word, index) => (
+                    {mnemonicArray.map((word, index) => (
                       <div key={index} className="bg-white p-3 rounded-lg border shadow-sm text-center">
                         <span className="text-gray-500 text-xs">{index + 1}.</span> {word}
                       </div>
@@ -194,10 +228,15 @@ const Web3Wallet = () => {
         </Button>
       </CardContent>
     </Card>
-  );
+    )
+  }
+  
 
-  const ConnectedView = () => (
-    <>
+  const ConnectedView = () => {
+    const mnemonicArray = mnemonic.split(" ")
+
+    return(
+      <>
       <Card className="shadow-md bg-white rounded-xl">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
@@ -221,7 +260,8 @@ const Web3Wallet = () => {
           <div className="bg-gray-100 p-4 rounded-xl">
             <div className="text-sm text-gray-600 font-medium">Wallet Address</div>
             <div className="flex items-center justify-between mt-1">
-              <div className="font-mono">{accounts[currentAccount].address}</div>
+            <div className="font-mono">
+  {`${accounts[currentAccount].address.slice(0, 4)}...${accounts[currentAccount].address.slice(-4)}`}</div>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="hover:bg-gray-100" onClick={handleCopyAddress}>
                   <Copy size={16} />
@@ -285,7 +325,7 @@ const Web3Wallet = () => {
                   <Card className="bg-gray-50 shadow-inner">
                     <CardContent className="pt-6">
                       <div className="grid grid-cols-3 gap-3">
-                        {mnemonicPhrase.map((word, index) => (
+                        {mnemonicArray.map((word, index) => (
                           <div key={index} className="bg-white p-3 rounded-lg border shadow-sm text-center">
                             <span className="text-gray-500 text-xs">{index + 1}.</span> {word}
                           </div>
@@ -344,7 +384,8 @@ const Web3Wallet = () => {
         </Alert>
       )}
     </>
-  );
+    )
+  }
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 p-4 bg-gradient-to-br from-gray-100 to-gray-200">

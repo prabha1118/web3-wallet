@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { generateMnemonic, mnemonicToSeedSync } from 'bip39';
-import { mnemonicToSeed } from 'bip39';
 import { derivePath} from "ed25519-hd-key"
-import { Keypair } from "@solana/web3.js";
+import { Keypair, Connection, PublicKey, LAMPORTS_PER_SOL, clusterApiUrl  } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from 'bs58';
 import { Buffer } from 'buffer';
@@ -38,10 +37,9 @@ const Web3Wallet = () => {
   const [currentAccount, setCurrentAccount] = useState(0);
   const [importedWords, setImportedWords] = useState(Array(12).fill(''));
   const [walletStep, setWalletStep] = useState('initial');
-  const [accounts, setAccounts] = useState([
-    { address: '0x1234...5678', balance: '1.234 ETH', name: 'Account 1', privateKey: '0xabcd...efgh' },
-    { address: '0x5678...9012', balance: '0.567 ETH', name: 'Account 2', privateKey: '0xijkl...mnop' },
-  ]);
+  const [accounts, setAccounts] = useState([]);
+
+  const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
   useEffect(() => {
     createMnemonic()
@@ -53,14 +51,24 @@ const Web3Wallet = () => {
     setMnemonic(mn)
   }
 
-  
-
   const handleCopyAddress = () => {
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
   };
 
-  const handleCreateAccount = () => {
+  const getSolanaBalance = async (publicKey) => {
+    try{
+      const publicKeyObj = new PublicKey(publicKey)
+      const balance = await connection.getBalance(publicKeyObj)
+      return balance / LAMPORTS_PER_SOL
+
+    } catch(error) {
+      console.error("Error in getting balance: ", error)
+      throw error
+    }
+  }
+
+  const handleCreateAccount = async () => {
 
     const seed = mnemonicToSeedSync(mnemonic)
     const path = `m/44'/501'/${currentIndex}'/0'`
@@ -69,12 +77,11 @@ const Web3Wallet = () => {
     const keypair = Keypair.fromSecretKey(secret)._keypair
     setCurrentIndex(currentIndex + 1)
 
-    console.log(keypair.publicKey)
-    console.log(keypair.secretKey)
+    const getUserBalance = await getSolanaBalance(bs58.encode(keypair.publicKey))
 
     const newAccount = {
       address: bs58.encode(keypair.publicKey),
-      balance: '0.000 ETH',
+      balance: `${getUserBalance} SOL`,
       name: `Account ${accounts.length + 1}`,
       privateKey: bs58.encode(keypair.secretKey),
     };

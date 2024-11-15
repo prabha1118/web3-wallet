@@ -68,9 +68,7 @@ const Web3Wallet = () => {
   const [walletStep, setWalletStep] = useState("initial");
   const [accounts, setAccounts] = useState([]);
 
-  const [recipientAddress, setRecipientAddress] = useState(
-    "3mtQ3CfmzX3pZMVKpuSPnuA35ViFkBxTTsKVy6S4QMvb"
-  );
+  const [recipientAddress, setRecipientAddress] = useState("");
   const [amount, setAmount] = useState(1);
   const [txStatus, setTxStatus] = useState("");
 

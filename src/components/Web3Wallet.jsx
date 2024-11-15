@@ -90,8 +90,6 @@ const Web3Wallet = () => {
 
   const createMnemonic = async () => {
     const mn = await generateMnemonic();
-
-    setMnemonic(mn);
   };
 
   const handleCopyAddress = () => {
@@ -110,7 +108,15 @@ const Web3Wallet = () => {
   };
 
   const handleCreateAccount = async () => {
-    const seed = mnemonicToSeedSync(mnemonic);
+    let mnemonicPhrase = "";
+
+    if (importedWords.every((word) => word.length > 0)) {
+      mnemonicPhrase = importedWords.join(" ");
+    } else {
+      mnemonicPhrase = mnemonic;
+    }
+
+    const seed = mnemonicToSeedSync(mnemonicPhrase);
     const path = `m/44'/501'/${currentIndex}'/0'`;
     const derivedSeed = derivePath(path, seed.toString("hex")).key;
     const secret = nacl.sign.keyPair.fromSeed(derivedSeed).secretKey;
@@ -174,11 +180,11 @@ const Web3Wallet = () => {
     }
   };
 
-  const handleImportWallet = () => {
+  const handleImportWallet = async () => {
     if (importedWords.every((word) => word.length > 0)) {
-      setWalletStep("connected");
-      setIsConnected(true);
+      setMnemonic(importedWords.join(" "));
     }
+    handleCreateAccount();
   };
 
   const AccountSelector = () => (
@@ -351,6 +357,13 @@ const Web3Wallet = () => {
                 onClick={() => {
                   setIsConnected(false);
                   setWalletStep("initial");
+                  setCurrentAccount(0);
+                  setCurrentIndex(0);
+                  setAccounts([]);
+                  setImportedWords(Array(12).fill(""));
+                  setMnemonic(
+                    "champion capital butter volume protect cave mail behind because divert have chronic"
+                  );
                 }}
               >
                 Disconnect

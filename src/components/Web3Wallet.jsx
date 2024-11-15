@@ -15,7 +15,13 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 import { Buffer } from "buffer";
 
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card.tsx";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "./ui/card.tsx";
 import { Button } from "./ui/button.tsx";
 import {
   Copy,
@@ -93,6 +99,7 @@ const Web3Wallet = () => {
   };
 
   const handleCopyAddress = () => {
+    navigator.clipboard.writeText(accounts[currentAccount].address);
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
   };
@@ -103,6 +110,7 @@ const Web3Wallet = () => {
       const balance = await connection.getBalance(publicKeyObj);
       return balance / LAMPORTS_PER_SOL;
     } catch (error) {
+      console.error("Error in getting balance: ", error);
       throw error;
     }
   };
@@ -143,6 +151,7 @@ const Web3Wallet = () => {
 
   const handleSignTransaction = async () => {
     try {
+      console.log("Sending transaction...");
       const seed = mnemonicToSeedSync(mnemonic);
       const path = `m/44'/501'/${currentAccount}'/0'`;
       const derivedSeed = derivePath(path, seed.toString("hex")).key;
@@ -167,6 +176,7 @@ const Web3Wallet = () => {
         keypair,
       ]);
       setTxStatus("success");
+      console.log("Transaction confirmed:", result);
 
       return {
         success: true,
@@ -279,7 +289,12 @@ const Web3Wallet = () => {
     return (
       <Card className="text-center p-6 shadow-xl bg-white rounded-xl">
         <CardHeader>
-          <CardTitle>Web3 Wallet</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            Welcome to Web3 Wallet
+          </CardTitle>
+          <CardDescription className="text-gray-400 font-semibold">
+            Get started with your digital wallet
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <Dialog>
@@ -321,6 +336,11 @@ const Web3Wallet = () => {
                   </CardContent>
                 </Card>
 
+                <CardDescription className="text-sm text-red-500 font-medium">
+                  * An existing Mnemonic Phrase was employed to restore a funded
+                  wallet for interaction purposes.
+                </CardDescription>
+
                 <Button className="w-full" onClick={handleCreateAccount}>
                   Create Wallet
                 </Button>
@@ -349,7 +369,9 @@ const Web3Wallet = () => {
         <Card className="shadow-md bg-white rounded-xl">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
-              <CardTitle className="text-xl font-bold">Account</CardTitle>
+              <CardTitle className="text-xl font-bold">
+                Solana <span className="text-xs"> ( devnet ) </span>
+              </CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -398,7 +420,12 @@ const Web3Wallet = () => {
                     size="sm"
                     className="hover:bg-gray-100"
                   >
-                    <ExternalLink size={16} />
+                    <a
+                      target="_blank"
+                      href={`https://explorer.solana.com/address/${accounts[currentAccount].address}?cluster=devnet`}
+                    >
+                      <ExternalLink size={16} />
+                    </a>
                   </Button>
                 </div>
               </div>
